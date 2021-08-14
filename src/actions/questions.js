@@ -1,5 +1,6 @@
 import { saveQuestionAnswer, saveQuestion } from '../utils/api'
 import { showLoading, hideLoading } from 'react-redux-loading'
+import { saveUserAnswer, addUserQuestion } from './usres'
 export const GET_QUESTIONS = 'GET_QUESTIONS'
 export const ADD_QUESTION = 'ADD_QUESTION'
 export const ANSWER_QUESTION = 'ANSWER_QUESTION'
@@ -29,29 +30,40 @@ export function answerQuestion ({qid, authedUser, answer}) {
 
 //Asynch Actions
 
-export function handleAnswerQuestion (info) {
+//Answer qustion with optimistic updates
+export function handleAnswerQuestion (authedUser, qid, answer) {
     return (dispatch) => {
-        dispatch(answerQuestion(info))
-        return saveQuestionAnswer(info)
+      dispatch(answerQuestion(authedUser, qid, answer))
+      dispatch(saveUserAnswer(authedUser, qid, answer))
+      return saveQuestionAnswer({
+        authedUser,
+        qid,
+        answer
+        })
             .catch(e => {
                 console.warn('Error in handleAnswerQuestion: ', e)
-                dispatch(answerQuestion(info))
+                    dispatch(answerQuestion(authedUser, qid, answer))
+                    dispatch(saveUserAnswer(authedUser, qid, answer))
                 alert('There was an error Answering the Question! Try again :(')
             })
     }
 }
 
-export function handleAddQuestion (optionOneText, optionTwoText) {
-    return (dispatch, getState) => {
-        const { authedUser } = getState()
-        dispatch(showLoading())
-        return saveQuestion({
-            author: authedUser,
+
+export function handleAddQuestion(author, optionOneText, optionTwoText) {
+  const question = {
+            author: author,
             optionOneText,
-            optionTwoText
-        })
-        .then((question) => dispatch(addQuestion(question)))
+            optionTwoText,
+  }
+  return (dispatch) => {
+        dispatch(showLoading())
+        return saveQuestion(question)
+          .then((question) => {
+            dispatch(addQuestion(question))
+            dispatch(addUserQuestion(question.author, question.id))
+          })
         .then(() => dispatch(hideLoading()))
     }
 }
-
+  
